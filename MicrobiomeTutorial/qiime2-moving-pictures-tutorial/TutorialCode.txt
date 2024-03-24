@@ -1,0 +1,18 @@
+abyss-pe k=96 B=2G in='reads1.fastgz reads2.fastq.gz' 
+
+
+
+From this website: https://docs.qiime2.org/2024.2/tutorials/moving-pictures/ 
+## import my files into qiime2 and create the artifact  
+qiime tools import \
+  --type EMPSingleEndSequences \
+  --input-path emp-single-end-sequences \
+  --output-path emp-single-end-sequences.qza 
+
+## demultiplex sequencing reads
+qiime demux emp-single \
+  --i-seqs emp-single-end-sequences.qza \
+  --m-barcodes-file sample-metadata.tsv \
+  --m-barcodes-column barcode-sequence \
+  --o-per-sample-sequences demux.qza \
+  --o-error-correction-details demux-details.qza
