@@ -10,6 +10,7 @@ output: html_document
 library(phyloseq)
 library(dplyr)
 library(BiMiCo)
+library(ggplot2)
 ```
 
 # load taxa and seqtab.nochim
@@ -62,4 +63,120 @@ physeq
 #save physeq objects to load later
 ```{r}
 save(physeq, file="RData/physeq.RData")
+```
+
+#load pyseq objects to start here
+```{r}
+load ("RData/physeq.RData")
+```
+
+# plot bar graph based on phylum (addining functionality from ggplot2, so do library, where we add color)
+```{r}
+plot_bar(physeq, fill = "Phylum") + geom_bar(aes(color=Phylum, fill=Phylum), stat="identity", position="fill")
+#identiy means raw numbers 
+```
+
+#create a barplot of relative abundance, all to 100, separated based on body site 
+```{r}
+#convert to relative abundance
+physeq_relabund <- transform_sample_counts(physeq, function(x) x / sum(x))
+
+#barplot
+plot_bar(physeq_relabund, fill = "Phylum") + geom_bar(aes(color=Phylum, fill=Phylum), stat="identity", position="fill") + facet_wrap(~body.site, scales = "free")
+#if you change body site to subjects, you get 2 graphs
+```
+
+# plot alpha diversity based on body.site (do the diff body sites have different diversity)
+```{r}
+plot_richness(physeq, x="body.site", color= "subject", measures=c("Observed", "Simpson", "Shannon"))
+#observed = straight up, simpson (less sesntive to rare taxa, more clustered) and shannon (more sentsitive to rare taxa) take into the abundance 
+#subject - can be changed to whatever metadata topic you want to color 
+```
+
+#plot alpha diversity based on reported.antibiotic.usage (in the metadata file the x shows _, make sure its .)
+```{r}
+plot_richness(physeq, x="reported.antibiotic.usage", color= "body.site", measures=c("Observed", "Simpson", "Shannon"))
+#shows that antibiotic usage lowers the diversity 
+```
+
+# plot alpha diversity based on subject, you can change color to shape 
+```{r}
+plot_richness(physeq, x="subject", color= "body.site", measures=c("Observed", "Simpson", "Shannon"))
+```
+
+# test for normality 
+```{r}
+#shows in Data: creates the alpha which has 3 variables with those 34 points, if alpha says empty then error
+alpha <- estimate_richness(physeq, measures=c("Observed", "Simpson", "Shannon"))
+```
+
+
+#shapiro-wilk
+```{r}
+#make three objects that store our results, do shapiro test on that alpha-object-column 
+observed <- shapiro.test(alpha$Observed)
+shannon <- shapiro.test(alpha$Shannon)
+simpson <- shapiro.test(alpha$Simpson)
+
+# not normal = p value less than 0.05, if greater then it is normally distributed, shannon is the only one greater
+
+#print
+print(observed)
+print(shannon)
+print(simpson)
+```
+
+# create data frames for statistical analyses
+```{r}
+#extract sample info from physeq object
+samples <- sample_data(physeq)
+
+#if sample is a phyloseq sample_data object, convert it to a data frame
+if (class(samples) == "sample_data") { 
+  samples <- data.frame(sample_data(samples))
+  }
+
+# add a column to alpha with sample names
+alpha$sample <- rownames(alpha)
+
+#merge alpha diversity data and sample data
+alpha <- merge(alpha, samples, by = "sample")
+```
+
+#perform stats based on subject
+```{r}
+#perform t/wilcox tests for each biodiversity index
+test_observed <- wilcox.test(Observed ~ subject, data = alpha)
+test_simpson <- wilcox.test(Simpson ~ subject, data = alpha)
+test_shannon <- t.test(Shannon ~ subject, data = alpha)
+
+#Printing the results
+print(test_observed)
+print(test_simpson)
+print(test_shannon)
+```
+
+#perform stats based on reported.antibiotic.usage
+```{r}
+#perform t/wilcox tests for each biodiversity index
+test_observed <- wilcox.test(Observed ~ reported.antibiotic.usage, data = alpha)
+test_simpson <- wilcox.test(Simpson ~ reported.antibiotic.usage, data = alpha)
+test_shannon <- t.test(Shannon ~ reported.antibiotic.usage, data = alpha)
+
+#Printing the results
+print(test_observed)
+print(test_simpson)
+print(test_shannon)
+#significant diff in diversity on antibiotic treated vs not shown by data p value
+```
+
+#test for body site
+```{r}
+kruskal.test(Simpson ~ body.site, data=alpha) # you pick the test pased on the shapiro results
+pairwise.wilcox.test(alpha$Simpson, alpha$body.site, p.adjust.method="holm") #based on simpson and body site, my sig comparisons, the tongue and gut are sig diff, and left palm are sig dif
+kruskal.test(Observed ~ body.site, data=alpha)
+pairwise.wilcox.test(alpha$Observed, alpha$body.site, p.adjust.method="holm")
+shannonanova <- aov(Shannon ~ body.site, data=alpha)
+summary(shannonanova)
+TukeyHSD(shannonanova)
 ```
