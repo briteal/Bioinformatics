@@ -1,0 +1,142 @@
+#this activates the qiime2 program since we already have an environment made 
+conda activate qiime2-amplicon-2024.2
+
+#we are changing directories to be in our designated folder for the assignment 
+cd /Volumes/T7/BIOINFORMATICS/MicrobiomeTutorial 
+
+#we have to change the file into a qzv since we want to visualize it through qiime2
+qiime demux summarize \\
+  --i-data demux.qza \\
+  --o-visualization demux.qzv 
+
+#viewing the demux file to see the interactive quality plot
+qiime tools view demux.qzv
+
+#Trim and trunc the edges of the forwards AND reverse reads based on their quality 
+#using the demux files provided and giving an output of files
+qiime dada2 denoise-paired \
+  --i-demultiplexed-seqs demux.qza \
+  --p-trim-left-f 10 \
+  --p-trunc-len-f 251 \
+  --p-trim-left-r 5 \
+  --p-trunc-len-r 230 \
+  --o-representative-sequences rep-seqs.qza \
+  --o-table table.qza \
+  --o-denoising-stats stats.qza
+
+#inputting our stats file and making a table visualization (qza to qzv) 
+qiime metadata tabulate \
+  --m-input-file stats.qza \
+  --o-visualization stats.qzv
+
+#viewing this file to see data for each sample
+qiime tools view stats-dada2.qzv
+
+#inputting the data table and making a visualization based on the data from the metadata file
+qiime feature-table summarize \
+  --i-table table.qza \
+  --o-visualization table.qzv \
+  --m-sample-metadata-file metadataWR.txt
+
+#inputting the rep-seq file and making a visualization based on the data from the metadata file
+qiime feature-table tabulate-seqs \
+  --i-data rep-seqs.qza \
+  --o-visualization rep-seqs.qzv
+
+#viewing either the table or rep-seq files 
+qiime tools view table.qzv
+
+qiime tools view rep-seqs.qzv
+
+
+#download the taxonomic data based on what qiime2 uses (classifier) 
+wget \                       
+  -O "gg-13-8-99-515-806-nb-classifier.qza" \
+  "https://data.qiime2.org/2024.2/common/gg-13-8-99-515-806-nb-classifier.qza"
+--2024-04-26 17:51:23--  https://data.qiime2.org/2024.2/common/gg-13-8-99-515-806-nb-classifier.qza
+
+#to make the Saved FeatureData[Taxonomy] to: taxonomy.qza. saved visualization to: taxonomy.qzv
+qiime feature-classifier classify-sklearn \
+  --i-classifier gg-13-8-99-515-806-nb-classifier.qza \
+  --i-reads rep-seqs.qza \
+  --o-classification taxonomy.qza
+
+#Filter the files to get rid of discrepancies of mt and chloroplast data
+qiime taxa filter-table \
+# this are what we are importing to be filtered 
+  --i-table table.qza \
+  --i-taxonomy taxonomy.qza \
+#this is what we wanted to be excluded from the feature table since bacteria came from mt/chloroplasts 
+  --p-exclude mitochondria,chloroplast \
+#this says where the output file will be saved 
+  --o-filtered-table table.qza
+
+#made a visual of the taxonomy file into qza 
+qiime metadata tabulate \
+  --m-input-file taxonomy.qza \
+  --o-visualization taxonomy.qzv
+
+#made a bar plot based on table and taxonomy using the metadata files, and output a plot 
+qiime taxa barplot \
+  --i-table table.qza \
+  --i-taxonomy taxonomy.qza \
+  --m-metadata-file metadataWR.txt \
+  --o-visualization taxa-bar-plots.qzv
+
+#make the rooted tree and the unrooted tree files: inputting the rep-seq file, and outputting 4 files
+qiime phylogeny align-to-tree-mafft-fasttree \
+  --i-sequences rep-seqs.qza \
+  --o-alignment aligned-rep-seqs.qza \
+  --o-masked-alignment masked-aligned-rep-seqs.qza \
+  --o-tree unrooted-tree.qza \
+  --o-rooted-tree rooted-tree.qza
+
+#creating a folder with all the core-metric results (such as Shannon and bray_curtis) based on the phylogeny rooted tree just generated and the table. The sampling depth is important and based on the table.qza, since the value will pick a certain population of the data. 
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny rooted-tree.qza \
+  --i-table table.qza \
+  --p-sampling-depth 8000 \
+  --m-metadata-file metadataWR.txt \
+  --output-dir core-metrics-results
+
+#getting the alpha-group significant for Shannon Diversity and the observed features 
+#gives us two outputs shannon and observed 
+qiime diversity alpha-group-significance \
+ --i-alpha-diversity core-metrics-results/shannon_vector.qza \
+ --m-metadata-file metadataWR.txt \ 
+ --o-visualization core-metrics-results/shannon_vector.qzv
+
+qiime diversity alpha-group-significance \
+ --i-alpha-diversity core-metrics-results/observed_features_vector.qza \
+ --m-metadata-file metadataWR.txt \
+ --o-visualization core-metrics-results/observed_features_vector.qzv
+
+#importing the bray-curtis file and using the metadata in terms of the (sex, population, flock)  data to make a file to visualize the data 
+#beta diversity analysis 
+qiime diversity beta-group-significance \
+ --i-distance-matrix core-metrics-results/bray_curtis_distance_matrix.qza \
+ --m-metadata-file metadataWR.txt \
+ --m-metadata-column sex \
+ --o-visualization core-metrics-results/bray_curtis_distance_sex.qzv \
+ --p-pairwise
+
+qiime diversity beta-group-significance \
+ --i-distance-matrix core-metrics-results/bray_curtis_distance_matrix.qza \
+ --m-metadata-file metadataWR.txt \
+ --m-metadata-column population \
+ --o-visualization core-metrics-results/bray_curtis_distance_population.qzv \
+ --p-pairwise
+
+qiime diversity beta-group-significance \
+ --i-distance-matrix core-metrics-results/bray_curtis_distance_matrix.qza \
+ --m-metadata-file metadataWR.txt \
+ --m-metadata-column flock \
+ --o-visualization core-metrics-results/bray_curtis_distance_flock.qza \
+ --p-pairwise
+
+#this opens the webpage to view the file 
+qiime tools view core-metrics-results/bray_curtis_emperor.qzv 
+
+
+
+
