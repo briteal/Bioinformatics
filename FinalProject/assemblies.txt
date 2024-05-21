@@ -1,0 +1,4 @@
+stringtie/WT01.transcripts.gtf
+stringtie/WT02.transcripts.gtf
+stringtie/FurC01.transcripts.gtf
+stringtie/FurC02.transcripts.gtf

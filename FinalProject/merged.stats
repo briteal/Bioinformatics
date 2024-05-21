@@ -1,0 +1,27 @@
+# gffcompare v0.12.6 | Command line was:
+#gffcompare -r genomic.gff -G -o merged stringtie_merged.gtf
+#
+
+#= Summary for dataset: stringtie_merged.gtf 
+#     Query mRNAs :    2330 in    2013 loci  (46 multi-exon transcripts)
+#            (13 multi-transcript loci, ~1.2 transcripts per locus)
+# Reference mRNAs :    2283 in    2058 loci  (0 multi-exon)
+# Super-loci w/ reference transcripts:     2008
+#-----------------| Sensitivity | Precision  |
+        Base level:   100.0     |    99.4    |
+        Exon level:    90.2     |    85.6    |
+  Transcript level:    92.2     |    90.3    |
+       Locus level:    99.2     |    99.0    |
+
+     Matching intron chains:       0
+       Matching transcripts:    2104
+              Matching loci:    2041
+
+          Missed exons:       0/2283	(  0.0%)
+           Novel exons:      16/2407	(  0.7%)
+         Novel introns:      83/83	(100.0%)
+           Missed loci:       0/2058	(  0.0%)
+            Novel loci:       5/2013	(  0.2%)
+
+ Total union super-loci across all input datasets: 2013 
+2330 out of 2330 consensus transcripts written in merged.annotated.gtf (0 discarded as redundant)
